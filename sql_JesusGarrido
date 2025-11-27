@@ -1,0 +1,408 @@
+--   1) Crear el esquema de la BBDD 
+CREATE SCHEMA IF NOT EXISTS data_project;
+ SET search_path TO data_project;
+
+SET search_path TO public, data_project;
+
+--  2) Mostrar los nombres de todas las películas con clasificación 'R' 
+select  title 
+from film 
+where rating = 'R';
+
+--  3) Nombres de los actores con actor_id entre 30 y 40 
+select first_name, last_name
+ from actor
+ where actor_id BETWEEN 30 AND 40;
+
+--  4) Películas cuyo idioma coincide con el idioma original 
+select  title
+ from film
+ where original_language_id IS NOT NULL
+ and language_id = original_language_id;
+
+--  5) Ordenar las películas por duración ascendente 
+select title, length
+from film
+order by length asc;
+
+-- 6) Nombre y apellido de los actores que tengan 'Allen' en el apellido 
+select first_name, last_name
+from actor 
+where last_name ilike '%allen%';
+
+--  7) Cantidad total de películas por clasificación (rating) 
+select rating, count(*) as peliculas_por_rating
+from film 
+group by rating 
+order by peliculas_por_rating ;
+
+--  8) Títulos de películas que son 'PG-13' o tienen duración > 3 horas 
+select title
+from film 
+where rating = 'PG-13' or length > 3;
+
+-- 9) Variabilidad (varianza y desviación estándar) del replacement_cost
+select var_pop(replacement_cost),
+stddev(replacement_cost)
+from film ;
+
+--  10) Mayor y menor duración de una película 
+select MAX(length),MIN(length)
+from film ;
+
+--  11) Importe del antepenúltimo pago/registro ordenado por fecha (tercer desde el final) 
+select amount, payment_date
+from payment 
+order by payment_date desc
+offset 2 limit 1;
+
+--  12) Títulos que no sean ni 'NC-17' ni 'G' 
+select title 
+from film 
+where rating not in ('NC-17', 'G');
+
+--  13) Promedio de duración por clasificación 
+select AVG(length), rating 
+from film 
+group by rating ;
+
+--  14) Títulos con duración mayor a 180 minutos 
+select title 
+from film 
+where length > 180;
+
+-- 15) ¿Cuánto dinero ha generado en total la empresa?
+select SUM(amount)
+from payment ;
+
+--  16) Los 10 clientes con mayor valor de id 
+select customer_id , first_name , last_name
+from customer
+order by customer_id desc
+limit 10;
+
+-- 17) Nombre y apellido de los actores que aparecen en la película 'Egg Igby' 
+select a.first_name , a.last_name 
+from actor as a 
+join film_actor as fa on a.actor_id = fa.actor_id 
+join film as f on fa.film_id = f.film_id 
+where f.title = 'EGG IGBY';
+
+-- 18) Nombres de películas únicos 
+select distinct title 
+from film ;
+
+-- 19) Películas que son comedias y duración > 180
+select f.title 
+from film as f 
+join film_category fc on f.film_id = fc.film_id 
+join category c on fc.category_id = c.category_id 
+where c.name = 'Comedy'and length > 180;
+
+--  20) Categorías cuyo promedio de duración > 110 minutos 
+select c.name, AVG(f.length) as avg_length
+from category as c 
+join film_category fc on c.category_id = fc.category_id 
+join film f on fc.film_id  = f.film_id  
+group by c.name 
+having avg (f.length)  > 110;
+
+--  21) Media de duración del alquiler de las películas 
+select AVG(rental_duration) 
+from film ;
+
+--  22) Crear columna con nombre y apellidos de los actores 
+select first_name ||' '|| last_name as nombre_completo 
+from actor ;
+
+--  23) Número de alquileres por día ordenado por cantidad descendente 
+select  (rental_date::date) dia , count(*) alquileres  
+from rental 
+group by dia 
+order by alquileres  desc;
+
+--  24) Películas con duración superior al promedio 
+select title, length 
+from film 
+where length > (select AVG(length) from film);
+
+--  25) Número de alquileres registrados por mes 
+select date_trunc('month', rental_date) mes , count(*) alquileres  
+from rental 
+group by mes ;
+
+--  26) Promedio, desviación estándar y varianza del total pagado
+select AVG(amount) , var_pop(amount) , stddev_pop(amount)
+from payment p ;
+
+--  27) ¿Qué películas se alquilan por encima del precio medio? 
+ select title , rental_rate 
+ from film 
+ where rental_rate > (select avg(rental_rate) from film);
+
+--  28) IDs de actores que han participado en más de 40 películas 
+ select actor_id, count(film_id)
+ from film_actor 
+ group by actor_id 
+ having count(film_id) > 40;
+
+--  29) Todas las películas y, si están en inventario, mostrar la cantidad disponible 
+SELECT f.film_id, f.title, COALESCE(inv.cantidad, 0) AS cantidad_disponible 
+FROM film f 
+LEFT JOIN ( SELECT i.film_id, COUNT(*) AS cantidad FROM inventory i GROUP BY i.film_id ) inv ON f.film_id = inv.film_id;
+
+-- 30) Actores y el número de películas en las que han actuado 
+select first_name ||' '|| last_name as nombre, count(film_id)
+from actor a 
+join film_actor fa on fa.actor_id = a.actor_id 
+group by nombre ;
+
+--  31) Todas las películas y mostrar los actores que han actuado en ellas (incluso si película sin actores) 
+select f. title , a.first_name, a.last_name  
+from film f 
+left join film_actor fa on f.film_id = fa.film_id
+left join actor a on fa.actor_id = a.actor_id 
+order by f.title ;
+
+--  32) Todos los actores y las películas en las que han actuado (incluso si actor sin películas) 
+select a.first_name, a.last_name ,f. title 
+from actor a 
+left join film_actor fa on a.actor_id = fa.actor_id 
+left join film f  on fa.film_id = f.film_id 
+order by a.last_name  ;
+
+--  33) Todas las películas y todos los registros de alquiler (películas con sus alquileres)
+select f.title, r.*
+from film f
+left join inventory i on f.film_id = i.film_id
+left join rental r on i.inventory_id = r.inventory_id
+order by f.title, r.rental_date;
+
+--  34) 5 clientes que más dinero han gastado 
+select c.first_name ||' '|| c.last_name as nombre_cliente , SUM(p.amount) as gasto_cliente
+from customer c 
+join payment p on c.customer_id = p.customer_id 
+group by nombre_cliente 
+order by gasto_cliente desc
+limit 5;
+
+-- 35) Seleccionar actores cuyo primer nombre es 'Johnny' 
+select *
+from actor a 
+where a.first_name = '%Johnny%';
+
+-- 36) Renombrar columnas (SELECT alias y/o ALTER TABLE)
+select a.first_name as nombre, a.last_name as apellido, a.actor_id 
+from actor a;
+
+-- No utilizo ALTER TABLE para no modificar el nombre de la columna de forma permanente
+
+--  37) ID del actor más bajo y más alto 
+select MIN(actor_id) as id_mas_bajo, MAX(actor_id) as id_mas_alto
+from actor a ;
+
+--  38) Cuenta de actores en la tabla actor 
+select count(*)
+from actor a ;
+
+--  39) Seleccionar todos los actores ordenados por apellido ascendente
+select *
+from actor a 
+order by a.last_name asc;
+
+-- 40) Seleccionar las primeras 5 películas de la tabla film 
+select title 
+from film f 
+limit 5;
+
+--  41) Agrupar actores por nombre y contar cuántos tienen el mismo nombre; nombre más repetido 
+select first_name, count(*) as cnt
+from actor
+group by first_name
+order by cnt desc;
+
+select first_name, count(*) as cnt
+from actor
+group by first_name
+order by cnt desc
+limit 1;
+
+-- 42) Todos los alquileres y los nombres de los clientes que los realizaron  
+select r.*, c.first_name, c.last_name
+from rental r
+join customer c on r.customer_id = c.customer_id;
+
+-- 43) Mostrar todos los clientes y sus alquileres si existen 
+select c.customer_id, c.first_name, c.last_name, r.rental_id, r.rental_date
+from customer c
+left join rental r on c.customer_id = r.customer_id
+order by c.customer_id;
+
+-- 44) CROSS JOIN entre film y category (consulta y explicación) 
+select f.title, c.name
+from film f
+cross join category c;
+
+-- 45) Actores que han participado en películas de la categoría 'Action' 
+select distinct a.first_name, a.last_name
+from actor a
+join film_actor fa on a.actor_id = fa.actor_id
+join film_category fc on fa.film_id = fc.film_id
+join category c on fc.category_id = c.category_id
+where c.name = 'action'
+order by a.last_name;
+
+--  46) Actores que no han participado en películas 
+select a.first_name, a.last_name
+from actor a
+left join film_actor fa on a.actor_id = fa.actor_id
+where fa.film_id is null;
+
+--   47) Nombre de los actores y cantidad de películas en las que han participado  
+select a.first_name, a.last_name, count(fa.film_id) as num_peliculas
+from actor a
+left join film_actor fa on a.actor_id = fa.actor_id
+group by a.actor_id, a.first_name, a.last_name
+order by num_peliculas desc;
+
+--   48) Crear vista actor_num_peliculas 
+create view actor_num_peliculas as
+select a.actor_id, a.first_name, a.last_name, count(fa.film_id) as num_peliculas
+from actor a
+left join film_actor fa on a.actor_id = fa.actor_id
+group by a.actor_id, a.first_name, a.last_name;
+
+--  49) Número total de alquileres realizados por cada cliente 
+select customer_id, count(*) as total_alquileres
+from rental
+group by customer_id;
+
+-- 50) Duración total de las películas en la categoría 'Action' 
+select sum(f.length) as total_duracion_action
+from film f
+join film_category fc on f.film_id = fc.film_id
+join category c on fc.category_id = c.category_id
+where c.name = 'action';
+
+-- 51) Crear tabla temporal cliente_rentas_temporal con total de alquileres por cliente
+create temp table cliente_rentas_temporal as
+select customer_id, count(*) as total_rentas
+from rental
+group by customer_id;
+
+-- 52) Crear tabla temporal peliculas_alquiladas (alquiladas al menos 10 veces)
+create temp table peliculas_alquiladas as
+select f.film_id, f.title, count(r.rental_id) as num_rentals
+from film f
+join inventory i on f.film_id = i.film_id
+join rental r on i.inventory_id = r.inventory_id
+group by f.film_id, f.title
+having count(r.rental_id) >= 10;
+
+--  53) Títulos alquilados por 'Tammy Sanders' y que aún no se han devuelto
+select distinct f.title
+from customer c
+join rental r on c.customer_id = r.customer_id
+join inventory i on r.inventory_id = i.inventory_id
+join film f on i.film_id = f.film_id
+where c.first_name = 'tammy' and c.last_name = 'sanders'
+and r.return_date is null
+order by f.title;
+
+--   54) Nombres de actores que han actuado en al menos una película de la categoría 'Sci-Fi'
+select distinct a.first_name, a.last_name
+from actor a
+join film_actor fa on a.actor_id = fa.actor_id
+join film_category fc on fa.film_id = fc.film_id
+join category c on fc.category_id = c.category_id
+where c.name ilike '%sci-fi%'
+order by a.last_name;
+
+--   55) Actores que actuaron en películas que se alquilaron después de la primera vez que se alquiló
+ 'Spartacus Cheaper'  
+with first_rental as (
+select min(r.rental_date) as first_date
+from rental r
+join inventory i on r.inventory_id = i.inventory_id
+join film f on i.film_id = f.film_id
+where f.title = 'spartacus cheaper'
+)
+select distinct a.first_name, a.last_name
+from actor a
+join film_actor fa on a.actor_id = fa.actor_id
+join inventory i on fa.film_id = i.film_id
+join rental r on i.inventory_id = r.inventory_id, first_rental fr
+where r.rental_date > fr.first_date
+order by a.last_name;
+
+--  56) Actores que no han actuado en ninguna película de la categoría 'Music' 
+select a.first_name, a.last_name
+from actor a
+where not exists (
+select 1
+from film_actor fa
+join film_category fc on fa.film_id = fc.film_id
+join category c on fc.category_id = c.category_id
+where fa.actor_id = a.actor_id and c.name = 'music'
+);
+
+--  57) Título de películas alquiladas por más de 8 días
+select distinct f.title
+from rental r
+join inventory i on r.inventory_id = i.inventory_id
+join film f on i.film_id = f.film_id
+where r.return_date is not null
+and (r.return_date - r.rental_date) > interval '8 days';
+
+--  58) Título de películas que son de la misma categoría que 'Animation' 
+select f.title
+from film f
+join film_category fc on f.film_id = fc.film_id
+join category c on fc.category_id = c.category_id
+where c.name = 'animation';
+
+--  59) Nombres de películas que tienen la misma duración que 'Dancing Fever' 
+select f2.title
+from film f1
+join film f2 on f1.length = f2.length
+where f1.title = 'dancing fever'
+order by f2.title;
+
+--  60) Nombres de clientes que han alquilado al menos 7 películas distintas 
+select c.customer_id, c.first_name, c.last_name, count(distinct i.film_id) as num_distintas
+from customer c
+join rental r on c.customer_id = r.customer_id
+join inventory i on r.inventory_id = i.inventory_id
+group by c.customer_id, c.first_name, c.last_name
+having count(distinct i.film_id) >= 7
+order by c.last_name;
+
+-- 61) Cantidad total de películas alquiladas por categoría  
+select cat.name, count(r.rental_id) as total_alquileres
+from category cat
+join film_category fc on cat.category_id = fc.category_id
+join film f on fc.film_id = f.film_id
+join inventory i on f.film_id = i.film_id
+join rental r on i.inventory_id = r.inventory_id
+group by cat.name
+order by total_alquileres desc;
+
+-- 62) Número de películas por categoría estrenadas en 2006
+select c.name, count(*) as num_peliculas_2006
+from category c
+join film_category fc on c.category_id = fc.category_id
+join film f on fc.film_id = f.film_id
+where f.release_year = 2006
+group by c.name;
+
+-- 63) Todas las combinaciones posibles de trabajadores con las tiendas (CROSS JOIN) 
+select st.store_id, s.staff_id, s.first_name, s.last_name
+from staff s
+cross join store st;
+
+-- 64) Cantidad total de películas alquiladas por cada cliente (id, nombre, apellido y cantidad) 
+select c.customer_id, c.first_name, c.last_name, count(r.rental_id) as total_alquiladas
+from customer c
+left join rental r on c.customer_id = r.customer_id
+group by c.customer_id, c.first_name, c.last_name
+order by total_alquiladas desc;
