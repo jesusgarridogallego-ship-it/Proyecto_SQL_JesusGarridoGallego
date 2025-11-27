@@ -1,4 +1,5 @@
 1. Pasos seguidos durante el proyecto
+
 1️⃣ Instalación de herramientas
 
 Instalación de PostgreSQL y pgAdmin
