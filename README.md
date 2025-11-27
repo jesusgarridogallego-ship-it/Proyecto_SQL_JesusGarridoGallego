@@ -92,5 +92,5 @@ El análisis permitió comprender cómo se relacionan las tablas y qué conclusi
 
         3. Esquema de la Base de Datos
 
-Se incluye un diagrama ER (Entity–Relationship) generado desde DBeaver:
+Se incluye un diagrama ER (Entity–Relationship) generado desde DBeaver en el repositorio como Proyecto Data Analytics - public.png
 
